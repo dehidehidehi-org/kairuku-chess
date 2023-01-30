@@ -99,4 +99,12 @@
             <version>${log4j.version}</version>
         </dependency>
     </dependencies>
+    
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/dehidehidehi-org/kairuku-chess</url>
+        </repository>
+    </distributionManagement>
 </project>
