@@ -1,9 +1,7 @@
 package net.marvk.chess.lichess4j;
 
 import lombok.extern.log4j.Log4j2;
-import net.marvk.chess.lichess4j.model.Challenge;
-import net.marvk.chess.lichess4j.model.GameStart;
-import net.marvk.chess.lichess4j.model.Perf;
+import net.marvk.chess.lichess4j.model.*;
 import net.marvk.chess.lichess4j.util.HttpUtil;
 import net.marvk.chess.uci4j.EngineFactory;
 import org.apache.http.HttpEntity;
@@ -39,11 +37,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Log4j2
 public class LichessClient implements AutoCloseable {
+
     private final CloseableHttpAsyncClient asyncClient;
     private final CloseableHttpClient httpClient;
 
@@ -55,7 +55,32 @@ public class LichessClient implements AutoCloseable {
     private final String accountName;
     private final String apiToken;
 
-    LichessClient(final String accountName, final String apiToken, final Collection<Perf> allowedPerfs, final boolean allowAllPerfsOnCasual, final EngineFactory engineFactory, final ChatMessageEventHandler eventHandler) throws LichessClientInstantiationException {
+    /**
+     * Nullable. Executed at the start of {@link #handleChallenge(Challenge)}
+     */
+    private Runnable preHandleChallengeHook;
+
+    /**
+     * Nullable. Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}
+     */
+    private Consumer<GameStateFull> preAcceptFullGameStateHook;
+
+    /**
+     * Nullable. Executed at the start of {@link GameThread#acceptGameState(GameState)}
+     */
+    private Consumer<GameState> preAcceptGameStateHook;
+
+    /**
+     * Nullable. Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}
+     */
+    private Consumer<ChatLine> preAcceptChatLine;
+
+    LichessClient(final String accountName,
+                  final String apiToken,
+                  final Collection<Perf> allowedPerfs,
+                  final boolean allowAllPerfsOnCasual,
+                  final EngineFactory engineFactory,
+                  final ChatMessageEventHandler eventHandler) throws LichessClientInstantiationException {
         this.accountName = accountName;
         this.apiToken = apiToken;
         this.allowedPerfs = Set.copyOf(allowedPerfs);
@@ -118,6 +143,10 @@ public class LichessClient implements AutoCloseable {
     }
 
     private void handleChallenge(final Challenge challenge) {
+        if (preHandleChallengeHook != null) {
+            preHandleChallengeHook.run();
+        }
+
         final String gameId = challenge.getId();
         final Perf perf = challenge.getPerf();
 
@@ -159,7 +188,19 @@ public class LichessClient implements AutoCloseable {
     }
 
     private void startGameHttpStream(final GameStart gameStart) {
-        executor.execute(new GameThread(accountName, apiToken, gameStart.getId(), httpClient, executor, engineFactory, eventHandler));
+        final Runnable runnable = () -> {
+            final GameThread gameThread = new GameThread(accountName,
+                                                         apiToken,
+                                                         gameStart.getId(),
+                                                         httpClient,
+                                                         executor,
+                                                         engineFactory,
+                                                         eventHandler);
+            gameThread.setPreAcceptFullGameStateHook(preAcceptFullGameStateHook);
+            gameThread.setPreAcceptGameStateHook(preAcceptGameStateHook);
+            gameThread.setPreAcceptChatLine(preAcceptChatLine);
+        };
+        executor.execute(runnable);
     }
 
     @Override
@@ -170,5 +211,21 @@ public class LichessClient implements AutoCloseable {
 
     private static List<Perf> mergePerfsList(final Perf perf, final Perf[] perfs) {
         return Stream.concat(Stream.of(perf), Arrays.stream(perfs)).collect(Collectors.toList());
+    }
+
+    public void setPreHandleChallengeHook(Runnable runnable) {
+        this.preHandleChallengeHook = runnable;
+    }
+
+    public void setPreAcceptFullGameStateHook(Consumer<GameStateFull> consumer) {
+        this.preAcceptFullGameStateHook = consumer;
+    }
+
+    public void setPreAcceptGameStateHook(Consumer<GameState> consumer) {
+        this.preAcceptGameStateHook = consumer;
+    }
+
+    public void setPreAcceptChatLine(Consumer<ChatLine> consumer) {
+        this.preAcceptChatLine = consumer;
     }
 }

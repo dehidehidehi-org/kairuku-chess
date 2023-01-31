@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 @Log4j2
 class GameThread implements Runnable, UiChannel {
+
     private final String gameId;
     private final String apiToken;
     private final CloseableHttpClient httpClient;
@@ -44,6 +46,21 @@ class GameThread implements Runnable, UiChannel {
 
     private GameStateFull initialGameState;
     private GameState lastGameState;
+
+    /**
+     * Nullable. Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}
+     */
+    private Consumer<GameStateFull> preAcceptFullGameStateHook;
+
+    /**
+     * Nullable. Then executed at the start of {@link GameThread#acceptGameState(GameState)}
+     */
+    private Consumer<GameState> preAcceptGameStateHook;
+
+    /**
+     * Nullable. Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}
+     */
+    private Consumer<ChatLine> preAcceptChatLine;
 
     GameThread(final String botId,
                final String apiToken,
@@ -67,6 +84,9 @@ class GameThread implements Runnable, UiChannel {
         } else {
             initialGameState = gameStateFull;
         }
+        if (preAcceptFullGameStateHook != null) {
+            preAcceptFullGameStateHook.accept(gameStateFull);
+        }
 
         if (botId.equals(gameStateFull.getWhite().getId())) {
             this.myColor = Color.WHITE;
@@ -80,6 +100,9 @@ class GameThread implements Runnable, UiChannel {
     }
 
     private void acceptGameState(final GameState gameState) {
+        if (preAcceptGameStateHook != null) {
+            preAcceptGameStateHook.accept(gameState);
+        }
         lastGameState = gameState;
 
         final Bitboard board;
@@ -113,7 +136,11 @@ class GameThread implements Runnable, UiChannel {
     }
 
     private void acceptChatLine(final ChatLine chatLine) {
-        chatMessageEventHandler.accept(chatLine, new LichessChatContext(this::writeInChat, engine, initialGameState, lastGameState));
+        if (preAcceptChatLine != null) {
+            preAcceptChatLine.accept(chatLine);
+        }
+        chatMessageEventHandler.accept(chatLine,
+                                       new LichessChatContext(this::writeInChat, engine, initialGameState, lastGameState));
     }
 
     private void writeInChat(final LichessChatResponse response) {
@@ -182,5 +209,17 @@ class GameThread implements Runnable, UiChannel {
                 log.error("", e);
             }
         });
+    }
+
+    public void setPreAcceptFullGameStateHook(Consumer<GameStateFull> consumer) {
+        this.preAcceptFullGameStateHook = consumer;
+    }
+
+    public void setPreAcceptGameStateHook(Consumer<GameState> consumer) {
+        this.preAcceptGameStateHook = consumer;
+    }
+
+    public void setPreAcceptChatLine(Consumer<ChatLine> consumer) {
+        this.preAcceptChatLine = consumer;
     }
 }
