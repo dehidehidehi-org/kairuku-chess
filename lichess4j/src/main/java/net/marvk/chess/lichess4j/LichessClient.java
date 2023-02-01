@@ -60,7 +60,7 @@ public class LichessClient implements AutoCloseable {
     /**
      * Nullable. Executed at the start of {@link #handleChallenge(Challenge)}
      */
-    private Runnable preHandleChallengeHook;
+    private Consumer<Challenge> preHandleChallengeHook;
 
     /**
      * Nullable. Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}
@@ -76,6 +76,12 @@ public class LichessClient implements AutoCloseable {
      * Nullable. Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}
      */
     private Consumer<ChatLine> preAcceptChatLine;
+
+    /**
+     * Executed at the end of {@link #startEventHttpStream(HttpAsyncRequestProducer)}<br>
+     * Essentially executed after a game is completed or interrupted.
+     */
+    private Runnable postEventHttpStreamHook;
 
     LichessClient(final String accountName,
                   final String apiToken,
@@ -142,11 +148,12 @@ public class LichessClient implements AutoCloseable {
 
         execute.get();
         log.info("Closing event stream");
+        postEventHttpStreamHook.run();
     }
 
     private void handleChallenge(final Challenge challenge) {
         if (preHandleChallengeHook != null) {
-            preHandleChallengeHook.run();
+            preHandleChallengeHook.accept(challenge);
         }
 
         final String gameId = challenge.getId();
@@ -216,8 +223,8 @@ public class LichessClient implements AutoCloseable {
         return Stream.concat(Stream.of(perf), Arrays.stream(perfs)).collect(Collectors.toList());
     }
 
-    public void setPreHandleChallengeHook(Runnable runnable) {
-        this.preHandleChallengeHook = runnable;
+    public void setPreHandleChallengeHook(Consumer<Challenge> consumer) {
+        this.preHandleChallengeHook = consumer;
     }
 
     public void setPreAcceptFullGameStateHook(Consumer<GameStateFull> consumer) {
@@ -230,5 +237,9 @@ public class LichessClient implements AutoCloseable {
 
     public void setPreAcceptChatLine(Consumer<ChatLine> consumer) {
         this.preAcceptChatLine = consumer;
+    }
+
+    public void setPostEventHttpStreamHook(final Runnable postEventHttpStreamHook) {
+        this.postEventHttpStreamHook = postEventHttpStreamHook;
     }
 }
