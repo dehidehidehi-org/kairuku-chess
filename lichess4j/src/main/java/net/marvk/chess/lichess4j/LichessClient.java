@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -38,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -188,7 +190,7 @@ public class LichessClient implements AutoCloseable {
     }
 
     private void startGameHttpStream(final GameStart gameStart) {
-        final Runnable runnable = () -> {
+        final Supplier<GameThread> instantiateGameThread = () -> {
             final GameThread gameThread = new GameThread(accountName,
                                                          apiToken,
                                                          gameStart.getId(),
@@ -199,8 +201,9 @@ public class LichessClient implements AutoCloseable {
             gameThread.setPreAcceptFullGameStateHook(preAcceptFullGameStateHook);
             gameThread.setPreAcceptGameStateHook(preAcceptGameStateHook);
             gameThread.setPreAcceptChatLine(preAcceptChatLine);
+            return gameThread;
         };
-        executor.execute(runnable);
+        executor.execute(instantiateGameThread.get());
     }
 
     @Override
