@@ -87,10 +87,14 @@ class GameThread implements Runnable, UiChannel {
         } else {
             initialGameState = gameStateFull;
         }
-        if (preAcceptFullGameStateHook != null) {
+        try {
             preAcceptFullGameStateHook.accept(gameStateFull);
+        } catch (IllegalStateException e) {
+            log.debug("preAcceptFullGameStateHook threw IllegalStateException {}", e.getMessage());
+            log.trace(e);
+            return;
         }
-
+        
         if (botId.equals(gameStateFull.getWhite().getId())) {
             this.myColor = Color.WHITE;
         } else if (botId.equals(gameStateFull.getBlack().getId())) {
