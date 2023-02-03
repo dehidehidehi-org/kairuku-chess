@@ -23,6 +23,7 @@ import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.IOReactorException;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
+import org.codehaus.plexus.util.StringUtils;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -156,22 +157,23 @@ public class LichessClient implements AutoCloseable {
     }
 
     private void handleChallenge(final Challenge challenge) {
+        final String gameId = challenge.getId();
+        final Perf perf = challenge.getPerf();
+        final String rated = challenge.getRated() ? "rated" : "casual";
+        String endpoint = null;
+
+        // Injecting logic from outside applications.
         try {
             preHandleChallengeHook.accept(challenge);
         } catch (IllegalStateException e) {
             log.debug("preHandleChallengeHook threw IllegalStateException {}", e.getMessage());
-            log.trace(e);
-            return;
+            endpoint = Endpoints.declineChallenge(gameId);
         }
-        
-        final String gameId = challenge.getId();
-        final Perf perf = challenge.getPerf();
-
-        final String endpoint;
-
-        final String rated = challenge.getRated() ? "rated" : "casual";
-
-        if ((allowAllPerfsOnCasual && !challenge.getRated()) || allowedPerfs.contains(perf)) {
+        if (StringUtils.equals(endpoint, Endpoints.declineChallenge(gameId))) {
+            log.info("Declining " + rated + " challenge " + gameId + " with perf " + perf + " as preHandleChallengeHook denied it.");
+        }
+        // Followed by original logic.
+        else if ((allowAllPerfsOnCasual && !challenge.getRated()) || allowedPerfs.contains(perf)) {
             log.info("Accepting " + rated + " challenge " + gameId + " with perf " + perf);
             endpoint = Endpoints.acceptChallenge(gameId);
         } else {
@@ -179,8 +181,9 @@ public class LichessClient implements AutoCloseable {
             endpoint = Endpoints.declineChallenge(gameId);
         }
 
+        final String finalEndpoint = endpoint;
         executor.execute(() -> {
-            final HttpUriRequest request = HttpUtil.createAuthorizedPostRequest(endpoint, apiToken);
+            final HttpUriRequest request = HttpUtil.createAuthorizedPostRequest(finalEndpoint, apiToken);
 
             log.trace("Trying to handle challenge " + gameId + "...");
 
