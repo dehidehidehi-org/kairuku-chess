@@ -48,19 +48,22 @@ class GameThread implements Runnable, UiChannel {
     private GameState lastGameState;
 
     /**
-     * Nullable. Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}
+     * Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}<br>
+     * Use {@link #setPreAcceptFullGameStateHook(Consumer)}
      */
-    private Consumer<GameStateFull> preAcceptFullGameStateHook;
+    private Consumer<GameStateFull> preAcceptFullGameStateHook = o -> {};
 
     /**
-     * Nullable. Then executed at the start of {@link GameThread#acceptGameState(GameState)}
+     * Executed at the start of {@link GameThread#acceptGameState(GameState)}<br>
+     * Use {@link #setPreAcceptGameStateHook(Consumer)}
      */
-    private Consumer<GameState> preAcceptGameStateHook;
+    private Consumer<GameState> preAcceptGameStateHook = o -> {};
 
     /**
-     * Nullable. Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}
+     * Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}<br>
+     * Use {@link #setPreAcceptChatLine(Consumer)}
      */
-    private Consumer<ChatLine> preAcceptChatLine;
+    private Consumer<ChatLine> preAcceptChatLine = o -> {};
 
     GameThread(final String botId,
                final String apiToken,
@@ -100,8 +103,12 @@ class GameThread implements Runnable, UiChannel {
     }
 
     private void acceptGameState(final GameState gameState) {
-        if (preAcceptGameStateHook != null) {
+        try {
             preAcceptGameStateHook.accept(gameState);
+        } catch (IllegalStateException e) {
+            log.debug("preAcceptGameStateHook threw IllegalStateException {}", e.getMessage());
+            log.trace(e);
+            return;
         }
         lastGameState = gameState;
 
