@@ -87,13 +87,7 @@ class GameThread implements Runnable, UiChannel {
         } else {
             initialGameState = gameStateFull;
         }
-        try {
-            preAcceptFullGameStateHook.accept(gameStateFull);
-        } catch (IllegalStateException e) {
-            log.debug("preAcceptFullGameStateHook threw IllegalStateException {}", e.getMessage());
-            log.trace(e);
-            return;
-        }
+        preAcceptFullGameStateHook.accept(gameStateFull);
         
         if (botId.equals(gameStateFull.getWhite().getId())) {
             this.myColor = Color.WHITE;
@@ -107,13 +101,7 @@ class GameThread implements Runnable, UiChannel {
     }
 
     private void acceptGameState(final GameState gameState) {
-        try {
-            preAcceptGameStateHook.accept(gameState);
-        } catch (IllegalStateException e) {
-            log.debug("preAcceptGameStateHook threw IllegalStateException {}", e.getMessage());
-            log.trace(e);
-            return;
-        }
+        preAcceptGameStateHook.accept(gameState);
         lastGameState = gameState;
 
         final Bitboard board;

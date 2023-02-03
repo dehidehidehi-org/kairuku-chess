@@ -58,30 +58,34 @@ public class LichessClient implements AutoCloseable {
     private final String apiToken;
 
     /**
-     * Nullable. Executed at the start of {@link #handleChallenge(Challenge)}
+     * Executed at the start of {@link #handleChallenge(Challenge)}<br>
+     * Use {@link #setPreHandleChallengeHook(Consumer)}
      */
-    private Consumer<Challenge> preHandleChallengeHook;
+    private Consumer<Challenge> preHandleChallengeHook = o -> {};
 
     /**
-     * Nullable. Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}
+     * Executed at the start of {@link GameThread#acceptFullGameState(GameStateFull)}<br>
+     * Use {@link #setPreAcceptFullGameStateHook(Consumer)}
      */
-    private Consumer<GameStateFull> preAcceptFullGameStateHook;
+    private Consumer<GameStateFull> preAcceptFullGameStateHook = o -> {};
 
     /**
-     * Nullable. Executed at the start of {@link GameThread#acceptGameState(GameState)}
+     * Executed at the start of {@link GameThread#acceptGameState(GameState)}<br>
+     * Use {@link #setPreAcceptGameStateHook(Consumer)}
      */
-    private Consumer<GameState> preAcceptGameStateHook;
+    private Consumer<GameState> preAcceptGameStateHook = o -> {};
 
     /**
-     * Nullable. Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}
+     * Executed at the start of {@link GameThread#acceptChatLine(ChatLine)}<br>
+     * Use {@link #setPreAcceptChatLine(Consumer)}
      */
-    private Consumer<ChatLine> preAcceptChatLine;
+    private Consumer<ChatLine> preAcceptChatLine = o -> {};
 
     /**
      * Executed at the end of {@link #startEventHttpStream(HttpAsyncRequestProducer)}<br>
      * Essentially executed after a game is completed or interrupted.
      */
-    private Runnable postEventHttpStreamHook;
+    private Runnable postEventHttpStreamHook = () -> {};
 
     LichessClient(final String accountName,
                   final String apiToken,
@@ -152,10 +156,14 @@ public class LichessClient implements AutoCloseable {
     }
 
     private void handleChallenge(final Challenge challenge) {
-        if (preHandleChallengeHook != null) {
+        try {
             preHandleChallengeHook.accept(challenge);
+        } catch (IllegalStateException e) {
+            log.debug("preHandleChallengeHook threw IllegalStateException {}", e.getMessage());
+            log.trace(e);
+            return;
         }
-
+        
         final String gameId = challenge.getId();
         final Perf perf = challenge.getPerf();
 
