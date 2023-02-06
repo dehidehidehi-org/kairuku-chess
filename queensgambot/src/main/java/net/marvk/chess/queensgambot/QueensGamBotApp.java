@@ -35,12 +35,13 @@ public final class QueensGamBotApp {
 
         final String lowercaseAccountName = "QueensGamBot".toLowerCase();
         try (final LichessClient client =
-                     LichessClientBuilder.create(lowercaseAccountName, KairukuEngine::new)
-                                         .allowAllPerfs(Perf.BULLET, Perf.BLITZ)
-                                         .allowAllPerfsOnCasual(true)
-                                         .apiToken(lichessApiToken)
-                                         .eventHandlerWithPrefixes(QueensGamBotApp::infoString, "!li", "!lm", "!lastinfo", "lastmetrics")
-                                         .build()
+                     LichessClientBuilder
+                             .create(lowercaseAccountName, KairukuEngine::new)
+                             .allowAllPerfs(Perf.BULLET, Perf.BLITZ)
+                             .allowAllPerfsOnCasual(true)
+                             .apiToken(lichessApiToken)
+                             .eventHandlerWithPrefixes(QueensGamBotApp::infoString, "!li", "!lm", "!lastinfo", "lastmetrics")
+                             .build()
         ) {
             client.start();
         } catch (final LichessClientInstantiationException | LichessClientOperationException e) {

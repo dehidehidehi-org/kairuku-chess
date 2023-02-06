@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -84,9 +83,14 @@ public class LichessClient implements AutoCloseable {
 
     /**
      * Executed at the end of {@link #startEventHttpStream(HttpAsyncRequestProducer)}<br>
-     * Essentially executed after a game is completed or interrupted.
+     * Essentially executed after a game is completed gracefully.
      */
     private Runnable postEventHttpStreamHook = () -> {};
+
+    /**
+     * Executed when a malformedEvent is received from Lichess, typically when a game has been interrupted.
+     */
+    private Consumer<EventResponse> malformedEventHook = o -> {};
 
     LichessClient(final String accountName,
                   final String apiToken,
@@ -149,7 +153,11 @@ public class LichessClient implements AutoCloseable {
     private void startEventHttpStream(final HttpAsyncRequestProducer request) throws InterruptedException, ExecutionException {
         log.info("Starting event stream");
 
-        final Future<Boolean> execute = asyncClient.execute(request, new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream), null);
+        final Future<Boolean> execute = asyncClient.execute(
+                request, 
+                new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream, malformedEventHook),
+                null
+        );
 
         execute.get();
         log.info("Closing event stream");
@@ -252,5 +260,9 @@ public class LichessClient implements AutoCloseable {
 
     public void setPostEventHttpStreamHook(final Runnable postEventHttpStreamHook) {
         this.postEventHttpStreamHook = postEventHttpStreamHook;
+    }
+
+    public void setMalformedEventHook(final Consumer<EventResponse> malformedEventHook) {
+        this.malformedEventHook = malformedEventHook;
     }
 }

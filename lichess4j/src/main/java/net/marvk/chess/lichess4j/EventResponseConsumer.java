@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import lombok.extern.log4j.Log4j2;
-import net.marvk.chess.lichess4j.model.Challenge;
-import net.marvk.chess.lichess4j.model.EventResponse;
-import net.marvk.chess.lichess4j.model.GameStart;
-import net.marvk.chess.lichess4j.model.Perf;
+import net.marvk.chess.lichess4j.model.*;
 import net.marvk.chess.lichess4j.serialization.PerfDeserializer;
 import net.marvk.chess.lichess4j.util.HttpUtil;
 import org.apache.http.HttpResponse;
@@ -26,10 +23,14 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
 
     private final Consumer<Challenge> challengeConsumer;
     private final Consumer<GameStart> gameStartConsumer;
+    private final Consumer<EventResponse> malformedEventConsumer;  // use setter
 
-    EventResponseConsumer(final Consumer<Challenge> challengeConsumer, final Consumer<GameStart> gameStartConsumer) {
+    EventResponseConsumer(final Consumer<Challenge> challengeConsumer, 
+                          final Consumer<GameStart> gameStartConsumer,
+                          final Consumer<EventResponse> malformedEventConsumer) {
         this.challengeConsumer = challengeConsumer;
         this.gameStartConsumer = gameStartConsumer;
+        this.malformedEventConsumer = malformedEventConsumer;
     }
 
     @Override
@@ -66,6 +67,7 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
             gameStartConsumer.accept(game);
         } else {
             log.warn("Received malformed event: " + eventResponse);
+            malformedEventConsumer.accept(eventResponse);
         }
     }
 
