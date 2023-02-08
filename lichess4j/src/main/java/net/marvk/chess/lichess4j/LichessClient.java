@@ -83,14 +83,15 @@ public class LichessClient implements AutoCloseable {
 
     /**
      * Executed at the end of {@link #startEventHttpStream(HttpAsyncRequestProducer)}<br>
-     * Essentially executed after a game is completed gracefully.
+     * Use {@link #setPostEventHttpStreamHook(Runnable)}
      */
     private Runnable postEventHttpStreamHook = () -> {};
 
     /**
-     * Executed when a malformedEvent is received from Lichess, typically when a game has been interrupted.
+     * Executed after receiving an unhandled event type.<br>
+     * A couple events aren't handled by default in the original source code of this project.
      */
-    private Consumer<EventResponse> malformedEventHook = o -> {};
+    private Consumer<EventResponse> otherEventTypeHook = o -> {};
 
     LichessClient(final String accountName,
                   final String apiToken,
@@ -155,7 +156,7 @@ public class LichessClient implements AutoCloseable {
 
         final Future<Boolean> execute = asyncClient.execute(
                 request, 
-                new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream, malformedEventHook),
+                new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream, otherEventTypeHook),
                 null
         );
 
@@ -215,11 +216,11 @@ public class LichessClient implements AutoCloseable {
         });
     }
 
-    private void startGameHttpStream(final GameStart gameStart) {
+    private void startGameHttpStream(final Game game) {
         final Supplier<GameThread> instantiateGameThread = () -> {
             final GameThread gameThread = new GameThread(accountName,
                                                          apiToken,
-                                                         gameStart.getId(),
+                                                         game.getId(),
                                                          httpClient,
                                                          executor,
                                                          engineFactory,
@@ -262,7 +263,7 @@ public class LichessClient implements AutoCloseable {
         this.postEventHttpStreamHook = postEventHttpStreamHook;
     }
 
-    public void setMalformedEventHook(final Consumer<EventResponse> malformedEventHook) {
-        this.malformedEventHook = malformedEventHook;
+    public void setOtherEventTypeHook(final Consumer<EventResponse> otherEventTypeHook) {
+        this.otherEventTypeHook = otherEventTypeHook;
     }
 }

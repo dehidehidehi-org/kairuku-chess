@@ -22,15 +22,15 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
                                                       .create();
 
     private final Consumer<Challenge> challengeConsumer;
-    private final Consumer<GameStart> gameStartConsumer;
-    private final Consumer<EventResponse> malformedEventConsumer;  // use setter
+    private final Consumer<Game> gameStartConsumer;
+    private final Consumer<EventResponse> otherEventTypeConsumer;  // use setter
 
     EventResponseConsumer(final Consumer<Challenge> challengeConsumer, 
-                          final Consumer<GameStart> gameStartConsumer,
-                          final Consumer<EventResponse> malformedEventConsumer) {
+                          final Consumer<Game> gameStartConsumer,
+                          final Consumer<EventResponse> otherEventTypeConsumer) {
         this.challengeConsumer = challengeConsumer;
         this.gameStartConsumer = gameStartConsumer;
-        this.malformedEventConsumer = malformedEventConsumer;
+        this.otherEventTypeConsumer = otherEventTypeConsumer;
     }
 
     @Override
@@ -52,22 +52,23 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
     private void acceptEvent(final EventResponse eventResponse) {
         if (eventResponse == null) {
             log.warn("Received null event response");
-            return;
-        }
-
-        if (eventResponse.getType() == EventResponse.Type.CHALLENGE) {
+            
+        } else if (eventResponse.getType() == EventResponse.Type.CHALLENGE) {
             final Challenge challenge = eventResponse.getChallenge();
             log.info("Received challenge: " + challenge);
-
             challengeConsumer.accept(challenge);
+            
         } else if (eventResponse.getType() == EventResponse.Type.GAME_START) {
-            final GameStart game = eventResponse.getGameStart();
+            final Game game = eventResponse.getGame();
             log.info("Received game start event: " + game);
-
             gameStartConsumer.accept(game);
+            
+        } else if (EventResponse.Type.toList().contains(eventResponse.getType())) {
+            log.info("Received " + eventResponse.getType() + "event: " + eventResponse);
+            otherEventTypeConsumer.accept(eventResponse);
+            
         } else {
-            log.warn("Received malformed event: " + eventResponse);
-            malformedEventConsumer.accept(eventResponse);
+            log.error("Received malformed event: " + eventResponse);
         }
     }
 
