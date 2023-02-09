@@ -14,8 +14,6 @@ import java.util.stream.Collectors;
 public class EventResponse {
     private final Type type;
     private final Challenge challenge;
-    private final Challenge challengeCanceled;
-    private final Challenge challengeDeclined;
     private final Game game;
 
     /**
@@ -26,7 +24,7 @@ public class EventResponse {
         @SerializedName("challengeCanceled") CHALLENGE_CANCELED,
         @SerializedName("challengeDeclined") CHALLENGE_DECLINED,
         @SerializedName("gameFinish") GAME_FINISH,
-        @SerializedName("game") GAME_START;
+        @SerializedName("gameStart") GAME_START;
 
         /**
          * Returns all values of the enum as a list.<br>

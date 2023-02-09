@@ -93,6 +93,11 @@ public class LichessClient implements AutoCloseable {
      */
     private Consumer<EventResponse> otherEventTypeHook = o -> {};
 
+    /**
+     * Executed after receiving a malformed event type, typically when a {@link EventResponse.Type} is null.
+     */
+    private Consumer<EventResponse> malformedEventHook = o -> {};
+
     LichessClient(final String accountName,
                   final String apiToken,
                   final Collection<Perf> allowedPerfs,
@@ -156,7 +161,7 @@ public class LichessClient implements AutoCloseable {
 
         final Future<Boolean> execute = asyncClient.execute(
                 request, 
-                new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream, otherEventTypeHook),
+                new EventResponseConsumer(this::handleChallenge, this::startGameHttpStream, otherEventTypeHook, malformedEventHook),
                 null
         );
 
@@ -265,5 +270,9 @@ public class LichessClient implements AutoCloseable {
 
     public void setOtherEventTypeHook(final Consumer<EventResponse> otherEventTypeHook) {
         this.otherEventTypeHook = otherEventTypeHook;
+    }
+
+    public void setMalformedEventHook(final Consumer<EventResponse> malformedEventHook) {
+        this.malformedEventHook = malformedEventHook;
     }
 }

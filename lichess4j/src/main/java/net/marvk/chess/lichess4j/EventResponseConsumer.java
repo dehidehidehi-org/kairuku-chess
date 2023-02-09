@@ -23,14 +23,17 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
 
     private final Consumer<Challenge> challengeConsumer;
     private final Consumer<Game> gameStartConsumer;
-    private final Consumer<EventResponse> otherEventTypeConsumer;  // use setter
+    private final Consumer<EventResponse> otherEventTypeConsumer;
+    private final Consumer<EventResponse> malformedEventConsumer;
 
-    EventResponseConsumer(final Consumer<Challenge> challengeConsumer, 
+    EventResponseConsumer(final Consumer<Challenge> challengeConsumer,
                           final Consumer<Game> gameStartConsumer,
-                          final Consumer<EventResponse> otherEventTypeConsumer) {
+                          final Consumer<EventResponse> otherEventTypeConsumer,
+                          final Consumer<EventResponse> malformedEventConsumer) {
         this.challengeConsumer = challengeConsumer;
         this.gameStartConsumer = gameStartConsumer;
         this.otherEventTypeConsumer = otherEventTypeConsumer;
+        this.malformedEventConsumer = malformedEventConsumer;
     }
 
     @Override
@@ -69,6 +72,7 @@ class EventResponseConsumer extends AsyncCharConsumer<Boolean> {
             
         } else {
             log.error("Received malformed event: " + eventResponse);
+            malformedEventConsumer.accept(eventResponse);
         }
     }
 
